@@ -5,4 +5,14 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.Lambda" Version="3.7.4.15" />
+    <PackageReference Include="AWSSDK.S3" Version="3.7.3.21" />
+    <PackageReference Include="AWSSDK.SQS" Version="3.7.1.31" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Shared\Shared.csproj" />
+  </ItemGroup>
+
 </Project>
