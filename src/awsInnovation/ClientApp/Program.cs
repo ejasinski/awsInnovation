@@ -21,8 +21,9 @@ namespace S3CreateAndList
         private static AmazonS3Config _s3Config;
         private static AmazonSQSConfig _sqsConfig;
         private static AmazonS3Client _s3Client;
-        private static AmazonSQSClient _sqsClient;       
-        
+        private static AmazonSQSClient _sqsClient;      
+
+
         private static Stack<FileInfo> _stackFiles;
         private static S3Region BucketRegionEast = S3Region.USEast1;
 
@@ -172,6 +173,8 @@ namespace S3CreateAndList
                 QueueUrl = QueueURL,
                 MessageBody = message
             };
+
+
 
             SendMessageResponse sendMessageResponse = await _sqsClient.SendMessageAsync(sendMessageRequest);
 
