@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "ClientApp": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "AWS_SECRET_ACCESS_KEY": "test",
+        "AWS_ACCESS_KEY_ID": "test"
+      }
+    }
+  }
+}

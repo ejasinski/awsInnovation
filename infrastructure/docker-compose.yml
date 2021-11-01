@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  localstack:
+    container_name: innov-localstack-s3
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"
+      - "4571:4571"
+      - "4572:4572"
+      - '8055:8080'
+    environment:
+      - SERVICES=s3
+      - DEBUG=true
+      - DATA_DIR=/tmp/localstack/data
+      - AWS_REGION=us-east-1
+      - DEFAULT_REGION=us-east-1
+    volumes:
+      - "data:/tmp/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - localstack-net
+
+networks:
+  localstack-net:
+    external: false
+    driver: bridge
+    name: localstack-net
+
+volumes:
+  data:
+    name: data
