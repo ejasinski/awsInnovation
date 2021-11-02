@@ -1,15 +1,18 @@
 ﻿using Amazon.SQS;
 using Amazon.SQS.Model;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Shared
 {
     //ported from https://github.dev/awslabs/amazon-sqs-java-temporary-queues-client/blob/master/src/main/java/com/amazonaws/services/sqs/AmazonSQSRequester.java
 
-    class AmazonSQSRequesterClient : IAmazonSQSRequesterClient
+    public class AmazonSQSRequesterClient 
     {
         public string QueuePrefix { get; set; }
         public Dictionary<string, string> QueueAttributes;
@@ -20,7 +23,9 @@ namespace Shared
         {
             _sqsClient = sqsClient;
             QueuePrefix = queuePrefix;
-            QueueAttributes = queueAttributes;
+
+            if(queueAttributes != null)
+                QueueAttributes = queueAttributes;
         }
 
 
@@ -29,8 +34,10 @@ namespace Shared
             throw new NotImplementedException();
         }
 
-        public async Task<Message> sendMessageAndGetResponseAsync(SendMessageRequest request, int timeout, TimeUnit unit)
+        public async Task<string> sendMessageAndGetResponseAsync(SendMessageRequest request)
         {
+            string retVal = string.Empty;
+
             string queueName = QueuePrefix + Guid.NewGuid().ToString();
             CreateQueueRequest createQueueRequest = new CreateQueueRequest()
             {
@@ -40,9 +47,61 @@ namespace Shared
 
             CreateQueueResponse createQueueResult = await _sqsClient.CreateQueueAsync(createQueueRequest);
             string queueUrl = createQueueResult.QueueUrl;
+            request.QueueUrl = queueUrl;
+            SendMessageResponse response = await _sqsClient.SendMessageAsync(request);
 
+
+            if(HttpStatusCode.OK == response.HttpStatusCode)
+            {
+                bool notFound = true;
+
+                while(notFound)
+                {
+                    ReceiveMessageResponse receiveMessageResponse = await _sqsClient.ReceiveMessageAsync(queueUrl);
+
+                    if (HttpStatusCode.OK == receiveMessageResponse.HttpStatusCode)
+                    {
+                        if (receiveMessageResponse.Messages.Count > 0)
+                        {
+                            foreach (var message in receiveMessageResponse.Messages)
+                            {
+                                if (message.Body.Contains("OCR-COMPLETE"))
+                                {
+                                    notFound = false;
+
+                                    Console.WriteLine("Value returned:" + message.Body);
+                                    retVal = message.Body;
+
+                                    var deleteReq = new DeleteMessageRequest
+                                    {
+                                        QueueUrl = queueUrl,
+                                        ReceiptHandle = message.ReceiptHandle
+                                    };
+                                    var deleteResp = await _sqsClient.DeleteMessageAsync(deleteReq);
+
+                                    if (deleteResp.HttpStatusCode != System.Net.HttpStatusCode.OK)
+                                        throw new Exception("Error attempting to delete message:" + message.ReceiptHandle);
+
+                                    Console.WriteLine("Message Deleted: " + message.ReceiptHandle);
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        throw new Exception("Error receiving message");
+                    }
+
+                    Thread.Sleep(5000);
+                }
+            }
+            else
+            {
+                throw new Exception("failed to send message.");
+            }
             //SendMessageRequest sendMessageRequest = SQSQue
 
+            return retVal;
         }
 
         public void shutdown()

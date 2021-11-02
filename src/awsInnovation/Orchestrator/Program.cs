@@ -2,6 +2,8 @@
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using System;
+using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Orchestrator
@@ -18,33 +20,67 @@ namespace Orchestrator
             await ReadMessages();
         }
 
+
+
         public static async Task ReadMessages()
         {
-            var receiveMessageRequest = new ReceiveMessageRequest();
-            receiveMessageRequest.QueueUrl = Shared.Constants.SQSUrl;
             while (true)
             {
-                receiveMessageRequest.WaitTimeSeconds = 15;
-                ReceiveMessageResponse receiveMessageResponse = await _sqsClient.ReceiveMessageAsync(receiveMessageRequest);
-                if (receiveMessageResponse.Messages.Count == 0)
+                Thread.Sleep(250);
+                ListQueuesResponse listQueuesResponse = null;
+                try
                 {
-                    continue;
+                    ListQueuesRequest listQueuesRequest = new ListQueuesRequest("pre");
+                    listQueuesResponse = await _sqsClient.ListQueuesAsync(listQueuesRequest);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("uh oh");
                 }
 
-                foreach (var message in receiveMessageResponse.Messages)
+                if (listQueuesResponse?.QueueUrls?.Count == 0)
+                    continue;
+
+                foreach (string queueURL in listQueuesResponse.QueueUrls)
                 {
-                    Console.WriteLine(message.Body);
-                    var deleteReq = new DeleteMessageRequest
+
+                    var receiveMessageRequest = new ReceiveMessageRequest();
+                    receiveMessageRequest.QueueUrl = queueURL;
+
+                    ReceiveMessageResponse receiveMessageResponse = await _sqsClient.ReceiveMessageAsync(receiveMessageRequest);
+                    if (receiveMessageResponse.Messages.Count == 0)
                     {
-                        QueueUrl = Shared.Constants.SQSUrl,
-                        ReceiptHandle = message.ReceiptHandle
-                    };
-                    var deleteResp = await _sqsClient.DeleteMessageAsync(deleteReq);
+                        continue;
+                    }
 
-                    if (deleteResp.HttpStatusCode != System.Net.HttpStatusCode.OK)
-                        throw new Exception("Error attempting to delete message:" + message.ReceiptHandle);
+                    foreach (var message in receiveMessageResponse.Messages)
+                    {
+                        if (!message.Body.Contains("OCR-COMPLETE"))
+                        {
+                            Console.WriteLine(message.Body);
+                            string response = message.Body.Replace("OCR", "OCR-COMPLETE");
 
-                    Console.WriteLine("Message Deleted: " + message.ReceiptHandle);
+                            SendMessageRequest messageRequest = new SendMessageRequest()
+                            {
+                                MessageBody = response,
+                                QueueUrl = queueURL
+                            };
+                            SendMessageResponse sendMessageResponse = await _sqsClient.SendMessageAsync(messageRequest);
+
+                            if (HttpStatusCode.OK == sendMessageResponse.HttpStatusCode)
+                            {
+                                Console.WriteLine("Response returned");
+                            }
+                        }
+                        /*
+                        var deleteResp = await _sqsClient.DeleteMessageAsync(deleteReq);
+
+                        if (deleteResp.HttpStatusCode != System.Net.HttpStatusCode.OK)
+                            throw new Exception("Error attempting to delete message:" + message.ReceiptHandle);
+
+                        Console.WriteLine("Message Deleted: " + message.ReceiptHandle);
+                        */
+                    }
                 }
             }
         }
@@ -55,9 +91,12 @@ namespace Orchestrator
 
             _sqsConfig = new AmazonSQSConfig
             {
-                ServiceURL = Shared.Constants.ServiceUrl
+                ServiceURL = Shared.Constants.ServiceUrl,
+                Timeout = TimeSpan.FromSeconds(30)
             };
             _sqsClient = new AmazonSQSClient(_awsCreds, _sqsConfig);
+
+
         }
     }
 }

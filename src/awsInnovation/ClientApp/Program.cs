@@ -6,6 +6,8 @@ using Amazon.S3.Model;
 using Amazon.S3.Util;
 using Amazon.SQS;
 using Amazon.SQS.Model;
+using Newtonsoft.Json;
+using Shared;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -21,7 +23,7 @@ namespace S3CreateAndList
         private static AmazonS3Config _s3Config;
         private static AmazonSQSConfig _sqsConfig;
         private static AmazonS3Client _s3Client;
-        private static AmazonSQSClient _sqsClient;      
+        private static AmazonSQSClient _sqsClient;
 
 
         private static Stack<FileInfo> _stackFiles;
@@ -157,8 +159,34 @@ namespace S3CreateAndList
                 else
                 {
                     Console.WriteLine("File saved to S3 Successfully: " + fileInfo.FullName);
-                    string sequenceNum = await SendSQSMessage(response.Result.ETag);
-                    Console.WriteLine("Message added to SQS " + sequenceNum);
+
+                    //was working
+                    // string sequenceNum = await SendSQSMessage(response.Result.ETag);
+
+
+                    Task task = new Task(() =>
+                    {
+                        ModelS3Upload modelS3Upload = new ModelS3Upload()
+                        {
+                            ProcessJob = "OCR"
+                        };
+
+                        string json = JsonConvert.SerializeObject(modelS3Upload);
+                        AmazonSQSRequesterClient amazonSQSRequesterClient = new AmazonSQSRequesterClient(_sqsClient, "pre", null);
+
+                        SendMessageRequest sendMessageRequest = new SendMessageRequest()
+                        {                        
+                            MessageBody = json
+                        };
+
+                        var sendMessageTask = amazonSQSRequesterClient.sendMessageAndGetResponseAsync(sendMessageRequest);
+                        sendMessageTask.Wait();
+                        string sendMessageResponse = sendMessageTask.Result;
+                        Console.WriteLine("Response returned" + sendMessageResponse);
+                    });
+
+                    task.Start();
+
                 }
 
                 Thread.Sleep(1000 * waitTimeSeconds);
@@ -178,7 +206,7 @@ namespace S3CreateAndList
 
             SendMessageResponse sendMessageResponse = await _sqsClient.SendMessageAsync(sendMessageRequest);
 
-            if(sendMessageResponse.HttpStatusCode != HttpStatusCode.OK)
+            if (sendMessageResponse.HttpStatusCode != HttpStatusCode.OK)
             {
                 throw new Exception("Failed to send message to SQS");
             }
