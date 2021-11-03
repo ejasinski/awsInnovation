@@ -8,6 +8,7 @@ using Amazon.SQS;
 using Amazon.SQS.Model;
 using Newtonsoft.Json;
 using Shared;
+using SQSTwoWayQueue;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -164,28 +165,26 @@ namespace S3CreateAndList
                     // string sequenceNum = await SendSQSMessage(response.Result.ETag);
 
 
-                    Task task = new Task(() =>
+                    ModelS3Upload modelS3Upload = new ModelS3Upload()
                     {
-                        ModelS3Upload modelS3Upload = new ModelS3Upload()
+                        ProcessJob = "OCR"
+                    };
+
+                    string json = JsonConvert.SerializeObject(modelS3Upload);
+
+                    Envelope envelope = new Envelope()
+                    {
+                        MessageLabel = new MessageLabel()
                         {
-                            ProcessJob = "OCR"
-                        };
+                            FromAppName = TwoWayQueueSettings.appNameClientApp,
+                            ToAppName = TwoWayQueueSettings.appNameOrchestration
+                        },
+                        MessageBody = json
+                    };
 
-                        string json = JsonConvert.SerializeObject(modelS3Upload);
-                        AmazonSQSRequesterClient amazonSQSRequesterClient = new AmazonSQSRequesterClient(_sqsClient, "pre", null);
+                    Message[] responseMessages = await TwoWayMessageQueue.SendMessageAndGetResponseAsync(_sqsClient, envelope);
+                   
 
-                        SendMessageRequest sendMessageRequest = new SendMessageRequest()
-                        {                        
-                            MessageBody = json
-                        };
-
-                        var sendMessageTask = amazonSQSRequesterClient.sendMessageAndGetResponseAsync(sendMessageRequest);
-                        sendMessageTask.Wait();
-                        string sendMessageResponse = sendMessageTask.Result;
-                        Console.WriteLine("Response returned" + sendMessageResponse);
-                    });
-
-                    task.Start();
 
                 }
 
@@ -214,5 +213,7 @@ namespace S3CreateAndList
             return sendMessageResponse.MessageId;
 
         }
+
+       
     }
 }

@@ -20,5 +20,20 @@ namespace SQSTwoWayQueue
                 { appNameOCR, prefixOCR }
                 };
         }
+
+        public static string GetPrefixByAppName(string appName)
+        {
+            switch (appName)
+            {
+                case appNameClientApp:
+                    return prefixClientApp;
+                case appNameOrchestration:
+                    return prefixOrchestration;
+                case appNameOCR:
+                    return prefixOCR;
+                default:
+                    return null;
+            }
+        }
     }
 }

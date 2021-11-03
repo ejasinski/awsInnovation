@@ -10,7 +10,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" Version="3.7.3.23" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Shared\Shared.csproj" />
+    <ProjectReference Include="..\SQSMailRoom\SQSTwoWayQueue.csproj" />
   </ItemGroup>
 
 </Project>

@@ -6,7 +6,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AWSSDK.Core" Version="3.7.3.30" />
+    <PackageReference Include="AWSSDK.S3" Version="3.7.3.23" />
+    <PackageReference Include="AWSSDK.SQS" Version="3.7.1.33" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Shared\Shared.csproj" />
+    <ProjectReference Include="..\SQSMailRoom\SQSTwoWayQueue.csproj" />
   </ItemGroup>
 
 </Project>

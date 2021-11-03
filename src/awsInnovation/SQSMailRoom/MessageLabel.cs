@@ -9,20 +9,12 @@ namespace SQSTwoWayQueue
         public string ToAppName { get; set; }
 
         public string FromAppName { get; set; }
-
-        public DateTime? TimeSent { get; set; }
-
-        public DateTime? TimeReceived { get; set; }
-
-        public bool Completed { get; set; }
+     
 
         public MessageLabel()
         {
             ToAppName = null;
-            FromAppName = null;
-            Completed = false;
-            TimeSent = null;
-            TimeReceived = null;           
+            FromAppName = null;     
         }
 
         public string GetQueueName()

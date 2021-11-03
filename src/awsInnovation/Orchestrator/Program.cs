@@ -2,6 +2,7 @@
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,62 +27,9 @@ namespace Orchestrator
         {
             while (true)
             {
-                Thread.Sleep(250);
-                ListQueuesResponse listQueuesResponse = null;
-                try
-                {
-                    ListQueuesRequest listQueuesRequest = new ListQueuesRequest("pre");
-                    listQueuesResponse = await _sqsClient.ListQueuesAsync(listQueuesRequest);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("uh oh");
-                }
+                Thread.Sleep(1000);
+                Dictionary<string, Message> keyValuePairs = await SQSTwoWayQueue.TwoWayMessageQueue.CheckForMessagesByApp(_sqsClient, SQSTwoWayQueue.TwoWayQueueSettings.appNameOrchestration);
 
-                if (listQueuesResponse?.QueueUrls?.Count == 0)
-                    continue;
-
-                foreach (string queueURL in listQueuesResponse.QueueUrls)
-                {
-
-                    var receiveMessageRequest = new ReceiveMessageRequest();
-                    receiveMessageRequest.QueueUrl = queueURL;
-
-                    ReceiveMessageResponse receiveMessageResponse = await _sqsClient.ReceiveMessageAsync(receiveMessageRequest);
-                    if (receiveMessageResponse.Messages.Count == 0)
-                    {
-                        continue;
-                    }
-
-                    foreach (var message in receiveMessageResponse.Messages)
-                    {
-                        if (!message.Body.Contains("OCR-COMPLETE"))
-                        {
-                            Console.WriteLine(message.Body);
-                            string response = message.Body.Replace("OCR", "OCR-COMPLETE");
-
-                            SendMessageRequest messageRequest = new SendMessageRequest()
-                            {
-                                MessageBody = response,
-                                QueueUrl = queueURL
-                            };
-                            SendMessageResponse sendMessageResponse = await _sqsClient.SendMessageAsync(messageRequest);
-
-                            if (HttpStatusCode.OK == sendMessageResponse.HttpStatusCode)
-                            {
-                                Console.WriteLine("Response returned");
-                            }
-                        }
-                        /*
-                        var deleteResp = await _sqsClient.DeleteMessageAsync(deleteReq);
-
-                        if (deleteResp.HttpStatusCode != System.Net.HttpStatusCode.OK)
-                            throw new Exception("Error attempting to delete message:" + message.ReceiptHandle);
-
-                        Console.WriteLine("Message Deleted: " + message.ReceiptHandle);
-                        */
-                    }
-                }
             }
         }
 
